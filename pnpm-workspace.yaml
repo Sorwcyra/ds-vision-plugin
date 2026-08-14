@@ -1,0 +1,54 @@
+packages:
+  - .
+
+# pnpm 11 delays new releases for 24 hours by default. This repository was
+# created alongside the first DeepSeek Harness preview, so only the exact
+# reviewed versions already pinned in pnpm-lock.yaml are exempted. Future
+# versions remain subject to the strict maturity window.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: true
+minimumReleaseAgeExclude:
+  - '@deepseek-ai/cordis@4.0.1'
+  - '@deepseek-ai/cosmokit@1.8.2'
+  - '@deepseek-ai/dsh-agent@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-attachment@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-brand@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-code-runtime@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-invariants@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-llm@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-scope@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-session@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-system-prompt@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-timeout@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-tools@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-typert-protocol@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-user-approval@0.1.0-rc.6'
+  - '@deepseek-ai/schemastery@3.18.1'
+  - '@yuku-codegen/binding-android-arm64@0.8.7'
+  - '@yuku-codegen/binding-darwin-arm64@0.8.7'
+  - '@yuku-codegen/binding-darwin-x64@0.8.7'
+  - '@yuku-codegen/binding-freebsd-x64@0.8.7'
+  - '@yuku-codegen/binding-linux-arm-gnu@0.8.7'
+  - '@yuku-codegen/binding-linux-arm-musl@0.8.7'
+  - '@yuku-codegen/binding-linux-arm64-gnu@0.8.7'
+  - '@yuku-codegen/binding-linux-arm64-musl@0.8.7'
+  - '@yuku-codegen/binding-linux-x64-gnu@0.8.7'
+  - '@yuku-codegen/binding-linux-x64-musl@0.8.7'
+  - '@yuku-codegen/binding-win32-arm64@0.8.7'
+  - '@yuku-codegen/binding-win32-x64@0.8.7'
+  - '@yuku-parser/binding-android-arm64@0.8.7'
+  - '@yuku-parser/binding-darwin-arm64@0.8.7'
+  - '@yuku-parser/binding-darwin-x64@0.8.7'
+  - '@yuku-parser/binding-freebsd-x64@0.8.7'
+  - '@yuku-parser/binding-linux-arm-gnu@0.8.7'
+  - '@yuku-parser/binding-linux-arm-musl@0.8.7'
+  - '@yuku-parser/binding-linux-arm64-gnu@0.8.7'
+  - '@yuku-parser/binding-linux-arm64-musl@0.8.7'
+  - '@yuku-parser/binding-linux-x64-gnu@0.8.7'
+  - '@yuku-parser/binding-linux-x64-musl@0.8.7'
+  - '@yuku-parser/binding-win32-arm64@0.8.7'
+  - '@yuku-parser/binding-win32-x64@0.8.7'
+  - '@yuku-toolchain/types@0.8.7'
+  - 'yuku-ast@0.8.7'
+  - 'yuku-codegen@0.8.7'
+  - 'yuku-parser@0.8.7'
