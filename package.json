@@ -16,6 +16,7 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "assets",
     "dist",
     "cordis.patch.yml",
     "config.example.yml",
@@ -37,15 +38,25 @@
     "pack:check": "npm pack --dry-run"
   },
   "keywords": [
+    "deepseek",
     "deepseek-harness",
+    "deepseek-vision",
     "dsh-plugin",
     "vision",
+    "vlm",
     "ocr",
-    "multimodal"
+    "multimodal",
+    "image-to-text",
+    "web-composer",
+    "typescript"
   ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Sorwcyra/ds-vision-plugin.git"
+  },
+  "homepage": "https://github.com/Sorwcyra/ds-vision-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/Sorwcyra/ds-vision-plugin/issues"
   },
   "license": "MIT",
   "engines": {

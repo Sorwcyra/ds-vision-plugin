@@ -1,10 +1,60 @@
-# ds-vision-plugin
+<p align="center">
+  <img src="assets/ds-vision-plugin-cover.png" alt="A black whale carrying image data through a four-model vision race into text" width="100%">
+</p>
 
-An installable DeepSeek Harness bundle that lets a text-only DeepSeek model accept images pasted or dropped into the Web composer. A narrowly scoped Host capability bridge admits the prompt for configured routes; the plugin then reads Harness's durable attachment, sends the verified image bytes to a configured vision model or OCR engine, replaces the image block with grounded text at the official `agent/pre-step` boundary, and lets DeepSeek continue normally.
+<h1 align="center">ds-vision-plugin</h1>
 
-No Harness source patch is required. The bundle also keeps the explicit `vision_analyze` and `vision_status` tools for workspace files and diagnostics.
+<p align="center">
+  <strong>Paste an image. Let four vision models race. Keep DeepSeek text-only.</strong>
+</p>
 
-## Why this plugin
+<p align="center">
+  <a href="README.zh-CN.md">简体中文</a>
+  ·
+  <a href="#quick-start">Quick start</a>
+  ·
+  <a href="#routing-model">Routing</a>
+  ·
+  <a href="VERIFICATION.md">Verification</a>
+  ·
+  <a href="LICENSE">License</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Sorwcyra/ds-vision-plugin/ci.yml?branch=main&style=flat&label=CI"></a>
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Sorwcyra/ds-vision-plugin?style=flat&logo=github&label=Stars"></a>
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/forks"><img alt="Forks" src="https://img.shields.io/github/forks/Sorwcyra/ds-vision-plugin?style=flat&logo=github&label=Forks"></a>
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/Sorwcyra/ds-vision-plugin?style=flat&label=last%20commit"></a>
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/issues"><img alt="Issues" src="https://img.shields.io/github/issues/Sorwcyra/ds-vision-plugin?style=flat&label=issues"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/Sorwcyra/ds-vision-plugin?style=flat&label=license"></a>
+</p>
+
+<p align="center">
+  <img alt="Version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-0ea5e9?style=flat">
+  <img alt="DeepSeek Harness plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-111827?style=flat">
+  <img alt="Four-model race" src="https://img.shields.io/badge/vision%20race-4%20models-4d6bfe?style=flat">
+  <img alt="Node.js 22.19 or 24" src="https://img.shields.io/badge/Node.js-22.19%20%7C%2024-339933?style=flat&logo=nodedotjs&logoColor=white">
+</p>
+
+<p align="center"><code>paste → attachment → race ×4 → grounded text → DeepSeek</code></p>
+
+An installable [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) bundle that gives a text-only DeepSeek model a natural image-input experience. Paste or drop an image into the Web composer; the plugin reads Harness's verified attachment, races configured vision models or OCR, replaces the image with grounded text at `agent/pre-step`, and lets DeepSeek continue normally.
+
+> [!NOTE]
+> No Harness source fork is required. The plugin also exposes `vision_analyze` and `vision_status` for workspace files and diagnostics.
+
+## Why it exists
+
+| User need | Plugin answer |
+|---|---|
+| Paste screenshots directly into a text-only DeepSeek chat | Automatic Web attachment-to-text conversion |
+| Avoid waiting on one slow or unavailable visual provider | Four models start together; first valid result wins |
+| Reuse the proven `ds-vision-skill` route design | Agnes 2.5 + Agnes 2.0 + GLM-4V-Flash + GLM-4.1V-Thinking-Flash |
+| Add a private relay, paid model, or local runtime | Unlimited OpenAI-compatible race or fallback routes |
+| Configure without hand-editing YAML | Guided CLI for setup, keys, status, custom models, and live verification |
+| Keep failures understandable | Visible annotation or strict failure; images are never silently discarded |
+
+## Why choose this plugin
 
 - **Native paste/drop UX:** users attach images directly in the Harness Web composer without first saving a path or naming a tool.
 - **The proven `ds-vision-skill` four-model pattern:** Agnes 2.5, Agnes 2.0, GLM-4V-Flash, and GLM-4.1V-Thinking-Flash start together; the first valid response is handed to DeepSeek.
@@ -16,11 +66,19 @@ No Harness source patch is required. The bundle also keeps the explicit `vision_
 
 The four-way race can start four provider requests for each uncached image. It is recommended when latency and availability matter most. If request count, cost, or data exposure matters more, remove channels from `routing.race` or prefer local VLM/OCR routes.
 
-## What it does
+## Routing model
 
-```text
-Web paste/drop -> Harness attachment store -> ds-vision-plugin
-               -> VLM / OCR -> text block -> text-only DeepSeek
+```mermaid
+flowchart LR
+    U["Web composer<br/>paste / drop image"] --> A["Harness attachment store<br/>verified bytes"]
+    A --> P["ds-vision-plugin<br/>agent/pre-step"]
+    P --> R["Four-model race<br/>Agnes 2.5 + Agnes 2.0<br/>GLM-4V + GLM Thinking"]
+    P --> O["OCR route<br/>Baidu / Tesseract"]
+    P --> C["Custom routes<br/>cloud / relay / local"]
+    R --> T["Grounded text block"]
+    O --> T
+    C --> T
+    T --> D["Text-only DeepSeek<br/>continues reasoning"]
 ```
 
 - Automatic conversion for Web image attachments; default route filter: `deepseek-official`.
@@ -34,7 +92,7 @@ Web paste/drop -> Harness attachment store -> ds-vision-plugin
 - Strict failure or visible failure annotation; images are never silently dropped.
 - Secrets are named by environment variable and are not returned by `vision_status`.
 
-## Install the bundle
+## Quick start
 
 Requirements: Node.js 22.19+ or 24+, and DeepSeek Harness `0.1.0-rc.6` (or a compatible `0.1.x` build exposing `agents`, `attachments`, `llm`, and `tools`).
 
@@ -178,4 +236,26 @@ pnpm run test:race
 
 The test asserts that all four requests start, `glm-4v-flash` wins first-success selection, and no 4.6 model exists in the default. The full `pnpm run check` additionally covers Host image admission, attachment-to-text conversion, failure modes, arbitrary CLI-added models, and path security.
 
-See `VERIFICATION.md` for the tested upstream commit, automated cases, package contents, and isolated Harness installation result. MIT licensed.
+See `VERIFICATION.md` for the tested upstream commit, automated cases, package contents, and isolated Harness installation result.
+
+## Related project
+
+This plugin adapts the four-model routing pattern from [`ds-vision-skill`](https://github.com/Sorwcyra/ds-vision-skill) to the DeepSeek Harness Web composer and lifecycle.
+
+## Star history
+
+<a href="https://www.star-history.com/?repos=Sorwcyra%2Fds-vision-plugin&type=date&legend=top-left">
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Sorwcyra/ds-vision-plugin&type=Date">
+</a>
+
+## Contributors
+
+Bug reports, provider fixes, documentation improvements, and new routing strategies are welcome.
+
+<a href="https://github.com/Sorwcyra/ds-vision-plugin/graphs/contributors">
+  <img alt="Contributors" src="https://contrib.rocks/image?repo=Sorwcyra/ds-vision-plugin">
+</a>
+
+## License
+
+Released under the [MIT License](LICENSE).

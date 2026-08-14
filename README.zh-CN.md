@@ -1,8 +1,58 @@
-# ds-vision-plugin
+<p align="center">
+  <img src="assets/ds-vision-plugin-cover.png" alt="黑色鲸鱼把图片数据送入四模型视觉竞速并转换为文本" width="100%">
+</p>
 
-这是一个可安装的 DeepSeek Harness bundle，让纯文本 DeepSeek 主模型也能接收用户直接粘贴或拖进 Web 输入框的图片。插件先通过限定 provider 的 Host 能力桥接放行消息，再从 Harness 的持久附件服务读取已校验的图片字节，交给配置好的视觉模型或 OCR，在官方 `agent/pre-step` 扩展点把图片 block 替换成可靠文本，最后让 DeepSeek 正常继续推理。
+<h1 align="center">ds-vision-plugin</h1>
 
-不需要修改 Harness 源码。插件同时保留 `vision_analyze` 与 `vision_status`，用于工作区文件识别和配置诊断。
+<p align="center">
+  <strong>直接贴图，四模型竞速，纯文本 DeepSeek 也能看图。</strong>
+</p>
+
+<p align="center">
+  <a href="README.md">English</a>
+  ·
+  <a href="#快速开始">快速开始</a>
+  ·
+  <a href="#路由模型">路由模型</a>
+  ·
+  <a href="VERIFICATION.md">验证记录</a>
+  ·
+  <a href="LICENSE">许可证</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Sorwcyra/ds-vision-plugin/ci.yml?branch=main&style=flat&label=CI"></a>
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/Sorwcyra/ds-vision-plugin?style=flat&logo=github&label=Stars"></a>
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/forks"><img alt="Forks" src="https://img.shields.io/github/forks/Sorwcyra/ds-vision-plugin?style=flat&logo=github&label=Forks"></a>
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/commits/main"><img alt="最近提交" src="https://img.shields.io/github/last-commit/Sorwcyra/ds-vision-plugin?style=flat&label=last%20commit"></a>
+  <a href="https://github.com/Sorwcyra/ds-vision-plugin/issues"><img alt="Issues" src="https://img.shields.io/github/issues/Sorwcyra/ds-vision-plugin?style=flat&label=issues"></a>
+  <a href="LICENSE"><img alt="许可证" src="https://img.shields.io/github/license/Sorwcyra/ds-vision-plugin?style=flat&label=license"></a>
+</p>
+
+<p align="center">
+  <img alt="版本 0.3.0" src="https://img.shields.io/badge/version-0.3.0-0ea5e9?style=flat">
+  <img alt="DeepSeek Harness 插件" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-111827?style=flat">
+  <img alt="四模型竞速" src="https://img.shields.io/badge/vision%20race-4%20models-4d6bfe?style=flat">
+  <img alt="Node.js 22.19 或 24" src="https://img.shields.io/badge/Node.js-22.19%20%7C%2024-339933?style=flat&logo=nodedotjs&logoColor=white">
+</p>
+
+<p align="center"><code>贴图 → 附件 → 四路竞速 → 可靠文本 → DeepSeek</code></p>
+
+这是一个可安装的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) bundle，让纯文本 DeepSeek 主模型获得自然的图片输入体验。用户只要把图片粘贴或拖入 Web 输入框；插件读取 Harness 已校验的附件，并发调用视觉模型或 OCR，在 `agent/pre-step` 把图片替换成可靠文本，再让 DeepSeek 正常继续推理。
+
+> [!NOTE]
+> 不需要修改或 fork Harness 源码。插件同时提供 `vision_analyze` 与 `vision_status`，用于工作区文件识别和配置诊断。
+
+## 为什么需要它
+
+| 用户需求 | 插件方案 |
+|---|---|
+| 把截图直接贴进纯文本 DeepSeek 对话 | 自动把 Web 附件转换为文本 |
+| 不想被单个视觉服务的慢响应或故障拖住 | 四个模型同时启动，首个有效结果获胜 |
+| 复用经过验证的 `ds-vision-skill` 路由思路 | Agnes 2.5 + Agnes 2.0 + GLM-4V-Flash + GLM-4.1V-Thinking-Flash |
+| 接入私有中转、付费模型或本地运行时 | 可添加任意数量的 OpenAI-compatible 竞速或降级路由 |
+| 不想手工编辑 YAML | CLI 引导配置、密钥、状态、自定义模型和真实图片验证 |
+| 失败时需要知道发生了什么 | 显式错误标注或严格失败，图片不会被静默丢弃 |
 
 ## 为什么推荐
 
@@ -16,11 +66,19 @@
 
 四路竞速意味着每张未命中缓存的图片最多会启动四个云端请求。适合重视低延迟与可用性的场景；对调用次数、费用或敏感数据更在意时，可以从 `routing.race` 删除通道，或改用本地模型/OCR。
 
-## 工作流程
+## 路由模型
 
-```text
-Web 粘贴/拖图 -> Harness 附件存储 -> ds-vision-plugin
-              -> 视觉模型 / OCR -> 文本 block -> 纯文本 DeepSeek
+```mermaid
+flowchart LR
+    U["Web 输入框<br/>粘贴 / 拖入图片"] --> A["Harness 附件存储<br/>已校验字节"]
+    A --> P["ds-vision-plugin<br/>agent/pre-step"]
+    P --> R["四模型竞速<br/>Agnes 2.5 + Agnes 2.0<br/>GLM-4V + GLM Thinking"]
+    P --> O["OCR 路由<br/>百度 / Tesseract"]
+    P --> C["自定义路由<br/>云端 / 中转 / 本地"]
+    R --> T["可靠文本 block"]
+    O --> T
+    C --> T
+    T --> D["纯文本 DeepSeek<br/>继续推理"]
 ```
 
 - 自动处理 Web 图片附件，默认只作用于 `deepseek-official` 路由。
@@ -34,7 +92,7 @@ Web 粘贴/拖图 -> Harness 附件存储 -> ds-vision-plugin
 - 可选严格失败或显式错误标注，绝不会静默丢图。
 - 密钥只通过环境变量名引用，`vision_status` 不返回密钥。
 
-## 安装 bundle
+## 快速开始
 
 要求 Node.js 22.19+ 或 24+，以及 DeepSeek Harness `0.1.0-rc.6`（或兼容的 `0.1.x`，须提供 `agents`、`attachments`、`llm`、`tools` 服务）。
 
@@ -194,4 +252,26 @@ pnpm run test:race
 
 断言会验证四个模型请求全部启动、`glm-4v-flash` 首先胜出，并且配置中不存在 4.6。完整 `pnpm run check` 还覆盖 Web Host 放行、附件转文本、失败策略、CLI 自定义模型和路径安全。
 
-`VERIFICATION.md` 记录了参考的官方源码提交、自动化覆盖、包内容和隔离环境安装结果。许可证为 MIT。
+`VERIFICATION.md` 记录了参考的官方源码提交、自动化覆盖、包内容和隔离环境安装结果。
+
+## 相关项目
+
+本插件把 [`ds-vision-skill`](https://github.com/Sorwcyra/ds-vision-skill) 的四模型路由思路适配到了 DeepSeek Harness Web 输入框和插件生命周期中。
+
+## Star 趋势
+
+<a href="https://www.star-history.com/?repos=Sorwcyra%2Fds-vision-plugin&type=date&legend=top-left">
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Sorwcyra/ds-vision-plugin&type=Date">
+</a>
+
+## 贡献者
+
+欢迎提交 bug、视觉通道修复、文档优化和新的路由策略。
+
+<a href="https://github.com/Sorwcyra/ds-vision-plugin/graphs/contributors">
+  <img alt="Contributors" src="https://contrib.rocks/image?repo=Sorwcyra/ds-vision-plugin">
+</a>
+
+## 许可证
+
+本项目使用 [MIT License](LICENSE)。
