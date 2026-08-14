@@ -34,6 +34,11 @@ test('CLI creates the four-model race and adds arbitrary custom models', async (
   assert.match(prepared.stdout, /Quickstart preparation complete/)
   const preserved = parse(await readFile(config, 'utf8'))
   assert.equal(preserved.channels.find(channel => channel.id === 'user-vlm').model, 'user-vision-model')
+
+  const defaultCommand = await run(process.execPath, [
+    'dist/cli.mjs', '--config', config, '--no-install', '--no-start',
+  ], { cwd: process.cwd() })
+  assert.match(defaultCommand.stdout, /Quickstart preparation complete/)
 })
 
 test('quickstart reuses an occupied Web port instead of launching a duplicate service', async () => {

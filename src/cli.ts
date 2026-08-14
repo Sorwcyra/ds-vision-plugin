@@ -29,7 +29,7 @@ interface RawConfig {
 }
 
 const args = process.argv.slice(2)
-const command = args.shift() ?? 'quickstart'
+const command = args[0] && !args[0].startsWith('--') ? (args.shift() as string) : 'quickstart'
 
 function option(name: string): string | undefined {
   const index = args.indexOf(`--${name}`)

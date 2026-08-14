@@ -10,7 +10,7 @@ import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
 //#region src/cli.ts
 const args = process.argv.slice(2);
-const command = args.shift() ?? "quickstart";
+const command = args[0] && !args[0].startsWith("--") ? args.shift() : "quickstart";
 function option(name) {
 	const index = args.indexOf(`--${name}`);
 	return index >= 0 ? args[index + 1] : void 0;

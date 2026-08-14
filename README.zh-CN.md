@@ -97,7 +97,7 @@ flowchart LR
 要求 Node.js 22.19+ 或 24+。在 PowerShell、命令提示符、bash 或 zsh 中只运行这一条：
 
 ```sh
-npx -y github:Sorwcyra/ds-vision-plugin quickstart
+npx -y github:Sorwcyra/ds-vision-plugin
 ```
 
 它会按需安装或更新插件、生成四模型配置且不覆盖已有配置、引导设置密钥、在 3080 端口启动 Web，并自动打开浏览器。以后启动仍然运行同一条命令。如果 3080 已有服务，它只会打开现有页面，不会重复启动。
@@ -106,10 +106,10 @@ npx -y github:Sorwcyra/ds-vision-plugin quickstart
 
 | 选项 | 作用 |
 |---|---|
-| `--update` | 即使版本号相同也重新安装 GitHub 当前版本 |
-| `--port 8080` | 换一个 Web 端口 |
-| `--no-open` | 启动但不自动打开浏览器 |
-| `--no-start` | 只安装和配置，不启动 Web |
+| `npx -y github:Sorwcyra/ds-vision-plugin --update` | 即使版本号相同也重新安装 GitHub 当前版本 |
+| `npx -y github:Sorwcyra/ds-vision-plugin --port 8080` | 换一个 Web 端口 |
+| `npx -y github:Sorwcyra/ds-vision-plugin --no-open` | 启动但不自动打开浏览器 |
+| `npx -y github:Sorwcyra/ds-vision-plugin --no-start` | 只安装和配置，不启动 Web |
 
 <details>
 <summary>手动安装和本地开发</summary>
