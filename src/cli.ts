@@ -2,9 +2,11 @@
 
 import { spawn } from 'node:child_process'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:net'
 import { homedir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
+import { fileURLToPath } from 'node:url'
 import { parse, stringify } from 'yaml'
 import { parseVisionConfig } from './config.js'
 import { VisionRouter } from './router.js'
@@ -27,7 +29,7 @@ interface RawConfig {
 }
 
 const args = process.argv.slice(2)
-const command = args.shift() ?? 'configure'
+const command = args.shift() ?? 'quickstart'
 
 function option(name: string): string | undefined {
   const index = args.indexOf(`--${name}`)
@@ -51,8 +53,11 @@ function positionals(): string[] {
 }
 
 function defaultConfigPath(): string {
-  const dshHome = process.env.DSH_HOME ?? resolve(homedir(), '.dsh')
-  return process.env.DS_VISION_CONFIG ?? resolve(dshHome, 'ds-vision', 'vision.yml')
+  return process.env.DS_VISION_CONFIG ?? resolve(dshHome(), 'ds-vision', 'vision.yml')
+}
+
+function dshHome(): string {
+  return process.env.DSH_HOME ?? resolve(homedir(), '.dsh')
 }
 
 function initialConfig(): RawConfig {
@@ -96,6 +101,105 @@ function initialConfig(): RawConfig {
 
 async function exists(path: string): Promise<boolean> {
   try { await stat(path); return true } catch { return false }
+}
+
+async function packageVersion(path: string): Promise<string | undefined> {
+  if (!await exists(path)) return undefined
+  try {
+    const value = JSON.parse(await readFile(path, 'utf8')) as { version?: unknown }
+    return typeof value.version === 'string' ? value.version : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function validateProfile(value: string): string {
+  if (!/^[A-Za-z0-9._-]+$/.test(value)) throw new Error(`invalid profile name: ${value}`)
+  return value
+}
+
+function validatePort(value: string): number {
+  const port = Number(value)
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error(`invalid port: ${value}`)
+  return port
+}
+
+async function run(commandName: string, commandArgs: string[], environment: NodeJS.ProcessEnv = process.env): Promise<void> {
+  await new Promise<void>((resolvePromise, reject) => {
+    const child = spawn(commandName, commandArgs, {
+      env: environment,
+      stdio: 'inherit',
+      windowsHide: false,
+    })
+    child.on('error', reject)
+    child.on('close', code => code === 0
+      ? resolvePromise()
+      : reject(new Error(`${commandName} exited with code ${String(code)}`)))
+  })
+}
+
+async function runNpx(commandArgs: string[], environment: NodeJS.ProcessEnv = process.env): Promise<void> {
+  const candidates = [
+    process.env.npm_execpath ? resolve(dirname(process.env.npm_execpath), 'npx-cli.js') : undefined,
+    resolve(dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npx-cli.js'),
+  ]
+  for (const candidate of candidates) {
+    if (candidate && await exists(candidate)) {
+      await run(process.execPath, [candidate, ...commandArgs], environment)
+      return
+    }
+  }
+  if (process.platform === 'win32') {
+    throw new Error('cannot locate npm npx-cli.js; reinstall Node.js with npm included')
+  }
+  await run('npx', commandArgs, environment)
+}
+
+async function portAvailable(port: number): Promise<boolean> {
+  return await new Promise<boolean>(resolvePromise => {
+    const server = createServer()
+    server.once('error', () => resolvePromise(false))
+    server.once('listening', () => server.close(() => resolvePromise(true)))
+    server.listen(port, '127.0.0.1')
+  })
+}
+
+function openBrowser(url: string): void {
+  if (flag('no-open')) return
+  const executable = process.platform === 'win32' ? (process.env.ComSpec ?? 'cmd.exe') : process.platform === 'darwin' ? 'open' : 'xdg-open'
+  const browserArgs = process.platform === 'win32' ? ['/d', '/c', 'start', '', url] : [url]
+  try {
+    const child = spawn(executable, browserArgs, { detached: true, stdio: 'ignore', windowsHide: true })
+    child.on('error', () => {})
+    child.unref()
+  } catch {
+    // Opening the browser is best effort; the URL is always printed as a fallback.
+  }
+}
+
+async function ensureInstalled(profile: string): Promise<void> {
+  if (flag('no-install')) return
+  const { currentVersion, installedVersion } = await installationVersions(profile)
+  if (!flag('update') && currentVersion && currentVersion === installedVersion) {
+    console.log(`Plugin ${currentVersion} is already installed in profile ${profile}.`)
+    return
+  }
+  const source = option('source') ?? 'github:Sorwcyra/ds-vision-plugin'
+  console.log(`Installing ds-vision-plugin into profile ${profile}...`)
+  await runNpx(['-y', '@deepseek-ai/dsh', 'plugin', '--profile', profile, 'add', '--workspace-root', source])
+}
+
+async function installationVersions(profile: string): Promise<{
+  currentVersion: string | undefined
+  installedVersion: string | undefined
+}> {
+  const currentPackage = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'package.json')
+  const installedPackage = resolve(dshHome(), 'profiles', profile, 'node_modules', 'ds-vision-plugin', 'package.json')
+  const [currentVersion, installedVersion] = await Promise.all([
+    packageVersion(currentPackage),
+    packageVersion(installedPackage),
+  ])
+  return { currentVersion, installedVersion }
 }
 
 async function readRawConfig(path: string): Promise<RawConfig> {
@@ -231,7 +335,7 @@ async function addModel(configPath: string): Promise<void> {
   }
 }
 
-async function configure(configPath: string): Promise<void> {
+async function configure(configPath: string, managedStart = false): Promise<void> {
   if (!await exists(configPath)) {
     await saveRawConfig(configPath, initialConfig())
     console.log(`Created four-model race configuration: ${configPath}`)
@@ -247,7 +351,39 @@ async function configure(configPath: string): Promise<void> {
     await setChannelKey(configPath, 'agnes-2.5-flash')
   }
   if (await confirm('Add another OpenAI-compatible vision model?', false)) await addModel(configPath)
-  console.log('Configuration complete. Restart dsh web, paste an image, and send it normally.')
+  console.log(managedStart
+    ? 'Configuration complete.'
+    : 'Configuration complete. Restart dsh web, paste an image, and send it normally.')
+}
+
+async function quickstart(configPath: string): Promise<void> {
+  const profile = validateProfile(option('profile') ?? 'web')
+  const port = validatePort(option('port') ?? '3080')
+  const url = `http://localhost:${String(port)}`
+  if (!flag('no-start') && !await portAvailable(port)) {
+    const { currentVersion, installedVersion } = await installationVersions(profile)
+    if (!currentVersion || currentVersion !== installedVersion || !await exists(configPath)) {
+      throw new Error(`port ${String(port)} is in use, but profile ${profile} is not ready for ds-vision-plugin ${currentVersion ?? '(unknown)'}; stop the existing service and run quickstart again`)
+    }
+    console.log(`Port ${String(port)} is already in use. Assuming the Web service is running: ${url}`)
+    openBrowser(url)
+    return
+  }
+  await ensureInstalled(profile)
+  await configure(configPath, true)
+  if (flag('no-start')) {
+    console.log('Quickstart preparation complete; Web startup was skipped.')
+    return
+  }
+  console.log(`Starting DeepSeek Harness at ${url}`)
+  console.log('Press Ctrl+C to stop the service.')
+  const timer = setTimeout(() => openBrowser(url), 1_500)
+  timer.unref()
+  const dshArgs = ['-y', '@deepseek-ai/dsh']
+  if (profile === 'web') dshArgs.push('web')
+  else dshArgs.push('--profile', profile)
+  dshArgs.push('--port', String(port))
+  await runNpx(dshArgs)
 }
 
 async function verify(configPath: string): Promise<void> {
@@ -269,8 +405,10 @@ async function verify(configPath: string): Promise<void> {
 }
 
 function help(): void {
-  console.log(`ds-vision configuration helper
+  console.log(`ds-vision quickstart and configuration helper
 
+  ds-vision quickstart [--profile web] [--port 3080] install, configure, open, and start
+                       [--update] [--no-open] [--no-install] [--no-start]
   ds-vision configure [--config PATH]               create/inspect the four-model race
   ds-vision status [--config PATH]                  show configured and missing channels
   ds-vision key CHANNEL [--key VALUE]               save a channel key (interactive recommended)
@@ -279,12 +417,14 @@ function help(): void {
   ds-vision verify --image PATH [--complex]          run one real first-success race
 
 Default race: agnes-2.5-flash + agnes-2.0-flash + glm-4v-flash + glm-4.1v-thinking-flash
+Running ds-vision with no command is the same as quickstart.
 The obsolete glm-4.6v-flash route is not used.`)
 }
 
 async function main(): Promise<void> {
   const configPath = resolve(option('config') ?? defaultConfigPath())
-  if (command === 'configure' || command === 'init') await configure(configPath)
+  if (command === 'quickstart' || command === 'start') await quickstart(configPath)
+  else if (command === 'configure' || command === 'init') await configure(configPath)
   else if (command === 'status') await showStatus(configPath)
   else if (command === 'key') await setChannelKey(configPath, positionals()[0] ?? '')
   else if (command === 'add') await addModel(configPath)

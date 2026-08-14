@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 - 2026-08-14
+
+- Added `ds-vision quickstart`, a one-command install, non-destructive configuration, Web startup, and browser-opening flow.
+- Made no-command CLI use equivalent to `quickstart`; repeated runs reuse the installed matching version and existing configuration.
+- Added safe handling for an already occupied Web port so a running service is opened instead of duplicated.
+- Expanded CI compatibility coverage to Windows, Ubuntu, and macOS on Node.js 22.19 and 24.
+
 ## 0.3.0 - 2026-08-14
 
 - Replaced the single `glm-4.6v-flash` example with the original four-model concurrent race from `ds-vision-skill`: Agnes 2.5 Flash, Agnes 2.0 Flash, GLM-4V-Flash, and GLM-4.1V-Thinking-Flash.

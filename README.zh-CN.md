@@ -30,7 +30,7 @@
 </p>
 
 <p align="center">
-  <img alt="版本 0.3.0" src="https://img.shields.io/badge/version-0.3.0-0ea5e9?style=flat">
+  <img alt="版本 0.4.0" src="https://img.shields.io/badge/version-0.4.0-0ea5e9?style=flat">
   <img alt="DeepSeek Harness 插件" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-111827?style=flat">
   <img alt="四模型竞速" src="https://img.shields.io/badge/vision%20race-4%20models-4d6bfe?style=flat">
   <img alt="Node.js 22.19 或 24" src="https://img.shields.io/badge/Node.js-22.19%20%7C%2024-339933?style=flat&logo=nodedotjs&logoColor=white">
@@ -94,23 +94,37 @@ flowchart LR
 
 ## 快速开始
 
-要求 Node.js 22.19+ 或 24+，以及 DeepSeek Harness `0.1.0-rc.6`（或兼容的 `0.1.x`，须提供 `agents`、`attachments`、`llm`、`tools` 服务）。
+要求 Node.js 22.19+ 或 24+。在 PowerShell、命令提示符、bash 或 zsh 中只运行这一条：
 
-从 GitHub 安装当前版本：
+```sh
+npx -y github:Sorwcyra/ds-vision-plugin quickstart
+```
+
+它会按需安装或更新插件、生成四模型配置且不覆盖已有配置、引导设置密钥、在 3080 端口启动 Web，并自动打开浏览器。以后启动仍然运行同一条命令。如果 3080 已有服务，它只会打开现有页面，不会重复启动。
+
+常用选项：
+
+| 选项 | 作用 |
+|---|---|
+| `--update` | 即使版本号相同也重新安装 GitHub 当前版本 |
+| `--port 8080` | 换一个 Web 端口 |
+| `--no-open` | 启动但不自动打开浏览器 |
+| `--no-start` | 只安装和配置，不启动 Web |
+
+<details>
+<summary>手动安装和本地开发</summary>
 
 ```powershell
 $env:npm_config_ignore_workspace_root_check = 'true'
 npx -y @deepseek-ai/dsh plugin --profile web add "github:Sorwcyra/ds-vision-plugin"
 ```
 
-安装仓库中已经构建好的 tarball：
+安装预构建 tarball：
 
 ```powershell
 $env:npm_config_ignore_workspace_root_check = 'true'
-npx -y @deepseek-ai/dsh plugin --profile web add "C:\absolute\path\to\ds-vision-plugin-0.3.0.tgz"
+npx -y @deepseek-ai/dsh plugin --profile web add "C:\absolute\path\to\ds-vision-plugin-0.4.0.tgz"
 ```
-
-如果已经全局安装 `dsh`，也可以直接使用 `dsh plugin ...`。若 PowerShell 提示无法识别 `dsh`，就使用上面的 `npx -y @deepseek-ai/dsh`，无需再全局安装。
 
 本地源码安装：
 
@@ -120,11 +134,7 @@ pnpm run build
 dsh plugin --profile web add file:/absolute/path/to/ds-vision-plugin
 ```
 
-确认 bundle 层和 `ds-vision` 行已进入最终配置：
-
-```sh
-dsh --profile web --dump-config
-```
+</details>
 
 ## 命令行配置向导
 

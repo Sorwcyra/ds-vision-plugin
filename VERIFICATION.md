@@ -11,7 +11,7 @@ Date: 2026-08-14
 
 ## Automated verification
 
-`pnpm run check` completes successfully. It runs strict TypeScript checking and 12 Node tests covering:
+`pnpm run check` completes successfully. It runs strict TypeScript checking and 13 Node tests covering:
 
 1. OpenAI-compatible image request serialization and successful text extraction.
 2. Automatic replacement of a pasted Web attachment at its original content position.
@@ -25,14 +25,15 @@ Date: 2026-08-14
 10. Manual file-tool root confinement.
 11. Concurrent start of all four named default models, cancellation after the first valid response, and absence of `glm-4.6v-flash`.
 12. CLI creation of the default race plus addition of an arbitrary user-owned OpenAI-compatible fallback model.
+13. Quickstart preparation plus safe reuse of an already occupied Web port instead of launching a duplicate service.
 
-All 12 tests pass with zero failures, skips, or cancellations.
+All 13 tests pass with zero failures, skips, or cancellations. GitHub Actions runs the same build, test, and package checks on Windows, Ubuntu, and macOS with Node.js 22.19 and 24.
 
 ## Bundle verification
 
 - `pnpm run pack:check` succeeds and lists only the declared runtime artifacts and documentation.
-- `pnpm pack --pack-destination ./artifacts` produces `artifacts/ds-vision-plugin-0.3.0.tgz`.
-- The tarball was installed into an isolated `DSH_HOME` using the official source CLI. The generated profile declares `ds-vision-plugin: 0.3.0` and appends `ds-vision-plugin` after `@deepseek-ai/dsh-base` in `dsh.profile.bundles`.
+- `pnpm pack --pack-destination ./artifacts` produces `artifacts/ds-vision-plugin-0.4.0.tgz`.
+- `quickstart --source <tarball> --no-start` installed version `0.4.0` into a clean isolated `DSH_HOME`, created the four-model configuration, preserved the official profile structure, and exited without launching Web.
 - `dsh --profile vision-e2e --dump-config` contains the `ds-vision` row plus `autoConvert`, `autoProviders`, `autoIntent`, and `autoFailureMode`.
 - Importing `ds-vision-plugin` from the isolated installed profile succeeds and exposes `apply`, `rewriteAttachedImages`, and `VisionRouter`.
 

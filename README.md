@@ -30,7 +30,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-0ea5e9?style=flat">
+  <img alt="Version 0.4.0" src="https://img.shields.io/badge/version-0.4.0-0ea5e9?style=flat">
   <img alt="DeepSeek Harness plugin" src="https://img.shields.io/badge/DeepSeek%20Harness-plugin-111827?style=flat">
   <img alt="Four-model race" src="https://img.shields.io/badge/vision%20race-4%20models-4d6bfe?style=flat">
   <img alt="Node.js 22.19 or 24" src="https://img.shields.io/badge/Node.js-22.19%20%7C%2024-339933?style=flat&logo=nodedotjs&logoColor=white">
@@ -94,25 +94,39 @@ flowchart LR
 
 ## Quick start
 
-Requirements: Node.js 22.19+ or 24+, and DeepSeek Harness `0.1.0-rc.6` (or a compatible `0.1.x` build exposing `agents`, `attachments`, `llm`, and `tools`).
+Requirements: Node.js 22.19+ or 24+. Run one command in PowerShell, Command Prompt, bash, or zsh:
 
-Install the current GitHub version:
+```sh
+npx -y github:Sorwcyra/ds-vision-plugin quickstart
+```
+
+The command installs or updates the plugin when needed, creates the four-model configuration without overwriting an existing one, guides key setup, starts the Web profile on port 3080, and opens the browser. Run the same command next time. If port 3080 is already serving, it simply opens the existing Web UI instead of starting a duplicate process.
+
+Useful options:
+
+| Option | Purpose |
+|---|---|
+| `--update` | reinstall the current GitHub version even when the package version matches |
+| `--port 8080` | use a different Web port |
+| `--no-open` | start without opening a browser |
+| `--no-start` | install and configure only |
+
+<details>
+<summary>Manual installation and local development</summary>
 
 ```powershell
 $env:npm_config_ignore_workspace_root_check = 'true'
 npx -y @deepseek-ai/dsh plugin --profile web add "github:Sorwcyra/ds-vision-plugin"
 ```
 
-Using the prebuilt tarball from this repository:
+Using the prebuilt tarball:
 
 ```powershell
 $env:npm_config_ignore_workspace_root_check = 'true'
-npx -y @deepseek-ai/dsh plugin --profile web add "C:\absolute\path\to\ds-vision-plugin-0.3.0.tgz"
+npx -y @deepseek-ai/dsh plugin --profile web add "C:\absolute\path\to\ds-vision-plugin-0.4.0.tgz"
 ```
 
-If `dsh` is installed globally, `dsh plugin ...` is equivalent. Restart the running `dsh web` process after an install or update; refreshing the browser alone does not reload bundles.
-
-Or install a local checkout:
+Local checkout:
 
 ```sh
 pnpm install
@@ -120,11 +134,7 @@ pnpm run build
 dsh plugin --profile web add file:/absolute/path/to/ds-vision-plugin
 ```
 
-Verify that the bundle layer and `ds-vision` row are present:
-
-```sh
-dsh --profile web --dump-config
-```
+</details>
 
 ## Configuration CLI
 
