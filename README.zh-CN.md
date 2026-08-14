@@ -15,19 +15,7 @@
 
 要求 Node.js 22.19+ 或 24+，以及 DeepSeek Harness `0.1.0-rc.6` 或兼容的 `0.1.x` 版本。
 
-### 推荐：Docker 一键部署
-
-[`ds-harness-docker`](https://github.com/Sorwcyra/ds-harness-docker) 已把本插件按固定 Git 提交内置进镜像，普通使用者无需单独安装：
-
-```powershell
-git clone https://github.com/Sorwcyra/ds-harness-docker.git
-cd ds-harness-docker
-.\scripts\start.ps1 -Workspace "C:\path\to\project"
-```
-
-Linux/macOS 使用 `./scripts/start.sh --workspace /absolute/project/path`。随后编辑 Docker 仓库中的 `.env` 和 `config/vision.yml`；完整步骤见其 [部署手册](https://github.com/Sorwcyra/ds-harness-docker/blob/main/docs/DEPLOY.zh-CN.md)。
-
-### 安装到已有 Harness
+### 安装到 Harness
 
 远程安装应固定完整提交 SHA：
 

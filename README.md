@@ -15,7 +15,7 @@ An installable vision plugin for [DeepSeek Harness](https://github.com/deepseek-
 
 Requires Node.js 22.19+ or 24+ and a compatible DeepSeek Harness 0.1.x release.
 
-For end users, the recommended path is [`ds-harness-docker`](https://github.com/Sorwcyra/ds-harness-docker), which embeds a pinned revision of this plugin. To add the plugin to an existing Harness profile directly:
+To add the plugin to an existing Harness profile, pin the reviewed revision:
 
 ```sh
 dsh plugin --profile web add github:Sorwcyra/ds-vision-plugin#59eec2f17ef2918f46d94e66537035d835013116
