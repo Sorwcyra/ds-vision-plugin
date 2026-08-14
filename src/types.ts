@@ -1,4 +1,5 @@
 export type VisionIntent = 'auto' | 'reason' | 'ocr' | 'document'
+export type ImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
 
 export interface ChannelConfig {
   id: string
@@ -66,6 +67,13 @@ export interface AnalyzeRequest {
   complex: boolean
   accurateOcr: boolean
   noCache: boolean
+}
+
+export interface AnalyzeImageRequest extends Omit<AnalyzeRequest, 'path' | 'intent'> {
+  data: Uint8Array
+  mediaType: ImageMediaType
+  name?: string
+  intent: Exclude<VisionIntent, 'document'>
 }
 
 export interface ChannelAttempt {

@@ -1,18 +1,22 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { mkdir, readFile, readdir, realpath, rename, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 import type {
   AnalyzeRequest,
+  AnalyzeImageRequest,
   ChannelAttempt,
   ChannelConfig,
+  ImageMediaType,
   VisionConfig,
   VisionEnvelope,
   VisionIntent,
 } from './types.js'
 
-const IMAGE_MIME = new Map([
+type RoutedImageMediaType = ImageMediaType | 'image/bmp' | 'image/tiff'
+
+const IMAGE_MIME = new Map<string, RoutedImageMediaType>([
   ['.png', 'image/png'], ['.jpg', 'image/jpeg'], ['.jpeg', 'image/jpeg'],
   ['.webp', 'image/webp'], ['.gif', 'image/gif'], ['.bmp', 'image/bmp'],
   ['.tif', 'image/tiff'], ['.tiff', 'image/tiff'],
@@ -81,7 +85,8 @@ async function saveCache(config: VisionConfig, key: string, value: VisionEnvelop
 
 async function callVisionChannel(
   channel: ChannelConfig,
-  file: string,
+  inputName: string,
+  mime: RoutedImageMediaType,
   bytes: Buffer,
   prompt: string,
   maxTokens: number,
@@ -92,8 +97,6 @@ async function callVisionChannel(
   if (channel.enabled === false) throw new Error('disabled')
   const apiKey = process.env[channel.apiKeyEnv]
   if (!channel.apiKeyOptional && !apiKey) throw new Error(`missing environment variable ${channel.apiKeyEnv}`)
-  const mime = IMAGE_MIME.get(extname(file).toLowerCase())
-  if (mime === undefined) throw new Error(`unsupported image extension: ${extname(file)}`)
   const hash = createHash('sha256').update(bytes).digest('hex')
   const cacheKey = createHash('sha256').update(JSON.stringify([
     1, hash, prompt, channel.id, channel.model, channel.baseUrl, channel.maxTokens ?? maxTokens,
@@ -135,6 +138,7 @@ async function callVisionChannel(
       channel: channel.id,
       model: channel.model,
       image_sha256: hash,
+      input: basename(inputName),
       bytes: bytes.length,
       latency_ms: Date.now() - started,
       cached: false,
@@ -146,7 +150,8 @@ async function callVisionChannel(
 
 async function raceChannels(
   channels: ChannelConfig[],
-  file: string,
+  inputName: string,
+  mime: RoutedImageMediaType,
   bytes: Buffer,
   prompt: string,
   maxTokens: number,
@@ -161,7 +166,7 @@ async function raceChannels(
     try {
       const localSignal = controllers[index]?.signal
       const envelope = await callVisionChannel(
-        channel, file, bytes, prompt, maxTokens, config, noCache,
+        channel, inputName, mime, bytes, prompt, maxTokens, config, noCache,
         localSignal === undefined ? signal : AbortSignal.any([signal, localSignal]),
       )
       attempts.push({ channel: channel.id, ok: true, latencyMs: Date.now() - started })
@@ -199,7 +204,13 @@ async function runCommand(command: string, args: string[], signal: AbortSignal, 
   })
 }
 
-async function baiduOcr(file: string, config: VisionConfig, accurate: boolean, signal: AbortSignal): Promise<VisionEnvelope> {
+async function baiduOcr(
+  bytes: Buffer,
+  inputName: string,
+  config: VisionConfig,
+  accurate: boolean,
+  signal: AbortSignal,
+): Promise<VisionEnvelope> {
   const options = config.ocr.baidu
   if (options === undefined || !options.enabled) throw new Error('Baidu OCR is disabled')
   const apiKey = process.env[options.apiKeyEnv]
@@ -213,7 +224,7 @@ async function baiduOcr(file: string, config: VisionConfig, accurate: boolean, s
   const tokenBody = await tokenResponse.json() as { access_token?: string; error_description?: string }
   if (!tokenResponse.ok || !tokenBody.access_token) throw new Error(tokenBody.error_description ?? `token HTTP ${tokenResponse.status}`)
   const endpoint = accurate ? 'accurate_basic' : 'general_basic'
-  const body = new URLSearchParams({ image: (await readFile(file)).toString('base64') })
+  const body = new URLSearchParams({ image: bytes.toString('base64') })
   const response = await fetch(`https://aip.baidubce.com/rest/2.0/ocr/v1/${endpoint}?access_token=${encodeURIComponent(tokenBody.access_token)}`, {
     method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body,
     signal: abortSignal(signal, config.limits.timeoutMs),
@@ -223,18 +234,47 @@ async function baiduOcr(file: string, config: VisionConfig, accurate: boolean, s
   return {
     task_type: 'ocr', tool_used: `baidu-ocr:${endpoint}`, confidence: 'high',
     result: payload.words_result.flatMap(item => item.words ? [item.words] : []).join('\n'),
-    metadata: { lines: payload.words_result.length, input: basename(file) },
+    metadata: { lines: payload.words_result.length, input: basename(inputName) },
   }
 }
 
-async function localOcr(file: string, config: VisionConfig, signal: AbortSignal): Promise<VisionEnvelope> {
+function extensionForMediaType(mediaType: RoutedImageMediaType): string {
+  switch (mediaType) {
+    case 'image/jpeg': return '.jpg'
+    case 'image/webp': return '.webp'
+    case 'image/gif': return '.gif'
+    case 'image/bmp': return '.bmp'
+    case 'image/tiff': return '.tiff'
+    default: return '.png'
+  }
+}
+
+async function localOcr(
+  bytes: Buffer,
+  mediaType: RoutedImageMediaType,
+  inputName: string,
+  config: VisionConfig,
+  signal: AbortSignal,
+): Promise<VisionEnvelope> {
   const options = config.ocr.tesseract
   if (options === undefined || !options.enabled) throw new Error('Tesseract OCR is disabled')
-  const result = (await runCommand(options.command, [file, 'stdout', '-l', options.languages], signal, config.limits.timeoutMs)).trim()
-  if (result === '') throw new Error('Tesseract returned no text')
-  return {
-    task_type: 'ocr', tool_used: `tesseract:${options.languages}`, confidence: 'medium', result,
-    metadata: { input: basename(file), local: true },
+  const temporaryRoot = await mkdtemp(join(tmpdir(), 'ds-vision-ocr-'))
+  const file = join(temporaryRoot, `input${extensionForMediaType(mediaType)}`)
+  try {
+    await writeFile(file, bytes, { mode: 0o600 })
+    const result = (await runCommand(
+      options.command,
+      [file, 'stdout', '-l', options.languages],
+      signal,
+      config.limits.timeoutMs,
+    )).trim()
+    if (result === '') throw new Error('Tesseract returned no text')
+    return {
+      task_type: 'ocr', tool_used: `tesseract:${options.languages}`, confidence: 'medium', result,
+      metadata: { input: basename(inputName), local: true },
+    }
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true })
   }
 }
 
@@ -278,6 +318,85 @@ function chooseIntent(intent: VisionIntent, file: string, prompt: string, accura
   return 'reason'
 }
 
+interface ImageRouteRequest {
+  bytes: Buffer
+  mediaType: RoutedImageMediaType
+  inputName: string
+  prompt: string
+  intent: 'reason' | 'ocr'
+  complex: boolean
+  accurateOcr: boolean
+  noCache: boolean
+}
+
+async function routeImage(
+  request: ImageRouteRequest,
+  config: VisionConfig,
+  signal: AbortSignal,
+  previousAttempts: unknown[] = [],
+): Promise<VisionEnvelope> {
+  const attempts = [...previousAttempts]
+  if (request.intent === 'ocr') {
+    try {
+      return await baiduOcr(request.bytes, request.inputName, config, request.accurateOcr, signal)
+    } catch (error) {
+      attempts.push({ tool: 'baidu-ocr', error: errorText(error) })
+    }
+    try {
+      return await localOcr(request.bytes, request.mediaType, request.inputName, config, signal)
+    } catch (error) {
+      attempts.push({ tool: 'tesseract', error: errorText(error) })
+    }
+  }
+
+  const maxTokens = request.complex
+    ? Math.max(2048, config.limits.maxTokens)
+    : config.limits.maxTokens
+  const byId = new Map(config.channels.map(channel => [channel.id, channel]))
+  const race = config.routing.race.flatMap(id => byId.get(id) ?? [])
+  if (race.length > 0) {
+    const raced = await raceChannels(
+      race,
+      request.inputName,
+      request.mediaType,
+      request.bytes,
+      request.prompt,
+      maxTokens,
+      config,
+      request.noCache,
+      signal,
+    )
+    attempts.push(...raced.attempts)
+    if (raced.envelope !== undefined) {
+      raced.envelope.metadata.race = { mode: 'first-success', attempts: raced.attempts }
+      return raced.envelope
+    }
+  }
+  for (const id of config.routing.fallback) {
+    const channel = byId.get(id)
+    if (channel === undefined) continue
+    const started = Date.now()
+    try {
+      const result = await callVisionChannel(
+        channel,
+        request.inputName,
+        request.mediaType,
+        request.bytes,
+        request.prompt,
+        maxTokens,
+        config,
+        request.noCache,
+        signal,
+      )
+      result.metadata.attempts = attempts
+      return result
+    } catch (error) {
+      attempts.push({ channel: id, ok: false, latencyMs: Date.now() - started, error: errorText(error) })
+    }
+  }
+  throw new Error(`no vision route succeeded: ${JSON.stringify(attempts)}`)
+}
+
 export class VisionRouter {
   constructor(private readonly allowedRoots: readonly string[]) {}
 
@@ -297,45 +416,42 @@ export class VisionRouter {
         }
       }
     }
-    if (intent === 'ocr' || intent === 'document') {
-      try { return await baiduOcr(file, config, request.accurateOcr, signal) } catch (error) {
-        attempts.push({ tool: 'baidu-ocr', error: errorText(error) })
-      }
-      try { return await localOcr(file, config, signal) } catch (error) {
-        attempts.push({ tool: 'tesseract', error: errorText(error) })
-      }
-    }
-
     const bytes = await readFile(file)
-    const byId = new Map(config.channels.map(channel => [channel.id, channel]))
-    const race = config.routing.race.flatMap(id => byId.get(id) ?? [])
-    if (race.length > 0) {
-      const raced = await raceChannels(
-        race, file, bytes, request.prompt, request.complex ? Math.max(2048, config.limits.maxTokens) : config.limits.maxTokens,
-        config, request.noCache, signal,
-      )
-      attempts.push(...raced.attempts)
-      if (raced.envelope !== undefined) {
-        raced.envelope.metadata.race = { mode: 'first-success', attempts: raced.attempts }
-        return raced.envelope
-      }
+    const mediaType = IMAGE_MIME.get(extname(file).toLowerCase())
+    if (mediaType === undefined) throw new Error(`unsupported image extension: ${extname(file)}`)
+    return await routeImage({
+      bytes,
+      mediaType,
+      inputName: file,
+      prompt: request.prompt,
+      intent: intent === 'ocr' || intent === 'document' ? 'ocr' : 'reason',
+      complex: request.complex,
+      accurateOcr: request.accurateOcr,
+      noCache: request.noCache,
+    }, config, signal, attempts)
+  }
+
+  async analyzeImage(
+    request: AnalyzeImageRequest,
+    config: VisionConfig,
+    signal: AbortSignal,
+  ): Promise<VisionEnvelope> {
+    const bytes = Buffer.from(request.data)
+    if (bytes.length > config.limits.maxFileBytes) {
+      throw new Error(`image exceeds maxFileBytes (${bytes.length} > ${config.limits.maxFileBytes})`)
     }
-    for (const id of config.routing.fallback) {
-      const channel = byId.get(id)
-      if (channel === undefined) continue
-      const started = Date.now()
-      try {
-        const result = await callVisionChannel(
-          channel, file, bytes, request.prompt,
-          request.complex ? Math.max(2048, config.limits.maxTokens) : config.limits.maxTokens,
-          config, request.noCache, signal,
-        )
-        result.metadata.attempts = attempts
-        return result
-      } catch (error) {
-        attempts.push({ channel: id, ok: false, latencyMs: Date.now() - started, error: errorText(error) })
-      }
-    }
-    throw new Error(`no vision route succeeded: ${JSON.stringify(attempts)}`)
+    const intent = request.intent === 'auto'
+      ? (request.accurateOcr || /\bocr\b|文字识别|提取文字/i.test(request.prompt) ? 'ocr' : 'reason')
+      : request.intent
+    return await routeImage({
+      bytes,
+      mediaType: request.mediaType,
+      inputName: request.name ?? `attachment${extensionForMediaType(request.mediaType)}`,
+      prompt: request.prompt,
+      intent,
+      complex: request.complex,
+      accurateOcr: request.accurateOcr,
+      noCache: request.noCache,
+    }, config, signal)
   }
 }

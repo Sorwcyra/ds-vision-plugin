@@ -1,0 +1,14 @@
+version: 1
+routing:
+  race: [mock]
+  fallback: []
+channels:
+  - id: mock
+    type: openai-compatible
+    baseUrl: http://127.0.0.1:41081/v1/chat/completions
+    model: mock-vl
+    apiKeyEnv: MOCK_VLM_KEY
+limits:
+  timeoutMs: 10000
+cache:
+  enabled: false
