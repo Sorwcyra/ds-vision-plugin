@@ -2,6 +2,12 @@
     - id: ds-vision
       name: ds-vision-plugin
       config:
-        configFile: !!js process.env.DS_VISION_CONFIG ?? './vision.yml'
+        configFile: !!js >-
+          process.env.DS_VISION_CONFIG ?? ((process.env.DSH_HOME ?? ((process.env.USERPROFILE ?? process.env.HOME) + '/.dsh')) + '/ds-vision/vision.yml')
         allowedRoots: !!js >-
           (process.env.DS_VISION_ALLOWED_ROOTS ?? process.cwd()).split(process.platform === 'win32' ? ';' : ':').filter(Boolean)
+        autoConvert: !!js process.env.DS_VISION_AUTO_CONVERT !== 'false'
+        autoProviders: !!js >-
+          (process.env.DS_VISION_AUTO_PROVIDERS ?? 'deepseek-official').split(',').map(value => value.trim()).filter(Boolean)
+        autoIntent: !!js process.env.DS_VISION_AUTO_INTENT ?? 'auto'
+        autoFailureMode: !!js process.env.DS_VISION_AUTO_FAILURE_MODE ?? 'annotate'
