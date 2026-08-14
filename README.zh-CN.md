@@ -100,14 +100,14 @@ flowchart LR
 npx -y github:Sorwcyra/ds-vision-plugin
 ```
 
-它会按需安装或更新插件、生成四模型配置且不覆盖已有配置、引导设置密钥、在 3080 端口启动 Web，并自动打开浏览器。以后启动仍然运行同一条命令。如果 3080 已有服务，它只会打开现有页面，不会重复启动。
+它会按需安装或更新插件、生成四模型配置且不覆盖已有配置、引导设置密钥、使用 Harness 配置的默认端口启动 Web，并自动打开浏览器。插件不会覆盖 Harness 的默认值（当前为 3080）。以后启动仍然运行同一条命令。如果默认端口已有服务，它只会打开现有页面，不会重复启动。
 
 常用选项：
 
 | 选项 | 作用 |
 |---|---|
 | `npx -y github:Sorwcyra/ds-vision-plugin --update` | 即使版本号相同也重新安装 GitHub 当前版本 |
-| `npx -y github:Sorwcyra/ds-vision-plugin --port 8080` | 换一个 Web 端口 |
+| `npx -y github:Sorwcyra/ds-vision-plugin --port 8080` | 明确覆盖 Harness 的 Web 端口 |
 | `npx -y github:Sorwcyra/ds-vision-plugin --no-open` | 启动但不自动打开浏览器 |
 | `npx -y github:Sorwcyra/ds-vision-plugin --no-start` | 只安装和配置，不启动 Web |
 
@@ -200,7 +200,7 @@ $env:AGNES_API_KEY = '...'
 npx -y @deepseek-ai/dsh web
 ```
 
-更新插件后必须退出旧的 `dsh web` 进程再启动；只刷新网页不会重新加载 bundle。如果提示 `EADDRINUSE 127.0.0.1:3080`，说明旧服务仍在占用端口，应先关闭启动它的 PowerShell 窗口（或在该窗口按 `Ctrl+C`），再执行启动命令。
+更新插件后必须退出旧的 `dsh web` 进程再启动；只刷新网页不会重新加载 bundle。如果提示 `EADDRINUSE`，说明旧服务仍在占用 Harness 的 Web 端口，应先关闭启动它的 PowerShell 窗口（或在该窗口按 `Ctrl+C`），再执行启动命令。
 
 ### 自动贴图配置
 

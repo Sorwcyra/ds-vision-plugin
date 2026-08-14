@@ -365,7 +365,8 @@ async function configure(configPath, managedStart = false) {
 }
 async function quickstart(configPath) {
 	const profile = validateProfile(option("profile") ?? "web");
-	const port = validatePort(option("port") ?? "3080");
+	const portOverride = option("port");
+	const port = validatePort(portOverride ?? "3080");
 	const url = `http://localhost:${String(port)}`;
 	if (!flag("no-start") && !await portAvailable(port)) {
 		const { currentVersion, installedVersion } = await installationVersions(profile);
@@ -380,13 +381,13 @@ async function quickstart(configPath) {
 		console.log("Quickstart preparation complete; Web startup was skipped.");
 		return;
 	}
-	console.log(`Starting DeepSeek Harness at ${url}`);
+	console.log(portOverride === void 0 ? `Starting DeepSeek Harness on its default Web port (currently ${url})` : `Starting DeepSeek Harness at ${url}`);
 	console.log("Press Ctrl+C to stop the service.");
 	setTimeout(() => openBrowser(url), 1500).unref();
 	const dshArgs = ["-y", "@deepseek-ai/dsh"];
 	if (profile === "web") dshArgs.push("web");
 	else dshArgs.push("--profile", profile);
-	dshArgs.push("--port", String(port));
+	if (portOverride !== void 0) dshArgs.push("--port", String(port));
 	await runNpx(dshArgs);
 }
 async function verify(configPath) {
@@ -409,7 +410,7 @@ async function verify(configPath) {
 function help() {
 	console.log(`ds-vision quickstart and configuration helper
 
-  ds-vision quickstart [--profile web] [--port 3080] install, configure, open, and start
+  ds-vision quickstart [--profile web] [--port PORT] install, configure, open, and start
                        [--update] [--no-open] [--no-install] [--no-start]
   ds-vision configure [--config PATH]               create/inspect the four-model race
   ds-vision status [--config PATH]                  show configured and missing channels
@@ -419,6 +420,7 @@ function help() {
   ds-vision verify --image PATH [--complex]          run one real first-success race
 
 Default race: agnes-2.5-flash + agnes-2.0-flash + glm-4v-flash + glm-4.1v-thinking-flash
+Without --port, Harness selects its configured default Web port (currently 3080).
 Running ds-vision with no command is the same as quickstart.
 The obsolete glm-4.6v-flash route is not used.`);
 }

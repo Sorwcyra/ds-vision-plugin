@@ -67,3 +67,32 @@ test('quickstart reuses an occupied Web port instead of launching a duplicate se
     await once(server, 'close')
   }
 })
+
+test('quickstart delegates the default Web port to Harness', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'ds-vision-default-port-test-'))
+  const config = join(root, 'ds-vision', 'vision.yml')
+  const fakeNpmDirectory = join(root, 'fake-npm')
+  const argumentRecord = join(root, 'npx-arguments.json')
+  await mkdir(fakeNpmDirectory, { recursive: true })
+  await writeFile(join(fakeNpmDirectory, 'npx-cli.js'), `
+    const { writeFileSync } = require('node:fs')
+    writeFileSync(process.env.ARGUMENT_RECORD, JSON.stringify(process.argv.slice(2)))
+  `)
+  await run(process.execPath, ['dist/cli.mjs', 'configure', '--config', config], { cwd: process.cwd() })
+
+  await run(process.execPath, [
+    'dist/cli.mjs', 'quickstart', '--no-install', '--no-open',
+  ], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      DSH_HOME: root,
+      DS_VISION_CONFIG: config,
+      npm_execpath: join(fakeNpmDirectory, 'npm-cli.js'),
+      ARGUMENT_RECORD: argumentRecord,
+    },
+  })
+
+  const forwardedArguments = JSON.parse(await readFile(argumentRecord, 'utf8'))
+  assert.deepEqual(forwardedArguments, ['-y', '@deepseek-ai/dsh', 'web'])
+})

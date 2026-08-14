@@ -100,14 +100,14 @@ Requirements: Node.js 22.19+ or 24+. Run one command in PowerShell, Command Prom
 npx -y github:Sorwcyra/ds-vision-plugin
 ```
 
-The command installs or updates the plugin when needed, creates the four-model configuration without overwriting an existing one, guides key setup, starts the Web profile on port 3080, and opens the browser. Run the same command next time. If port 3080 is already serving, it simply opens the existing Web UI instead of starting a duplicate process.
+The command installs or updates the plugin when needed, creates the four-model configuration without overwriting an existing one, guides key setup, starts the Web profile on the Harness-configured default port, and opens the browser. The plugin does not override that default (currently 3080). Run the same command next time. If the default port is already serving, it simply opens the existing Web UI instead of starting a duplicate process.
 
 Useful options:
 
 | Option | Purpose |
 |---|---|
 | `npx -y github:Sorwcyra/ds-vision-plugin --update` | reinstall even when the package version matches |
-| `npx -y github:Sorwcyra/ds-vision-plugin --port 8080` | use a different Web port |
+| `npx -y github:Sorwcyra/ds-vision-plugin --port 8080` | explicitly override the Harness Web port |
 | `npx -y github:Sorwcyra/ds-vision-plugin --no-open` | start without opening a browser |
 | `npx -y github:Sorwcyra/ds-vision-plugin --no-start` | install and configure only |
 

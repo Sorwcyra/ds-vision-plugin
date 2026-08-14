@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.1 - 2026-08-14
+
+- Quickstart now leaves the Web port unspecified unless `--port` is provided, allowing DeepSeek Harness to own its configured default (currently 3080).
+
 ## 0.4.0 - 2026-08-14
 
 - Added `ds-vision quickstart`, a one-command install, non-destructive configuration, Web startup, and browser-opening flow.
