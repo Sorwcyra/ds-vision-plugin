@@ -1,0 +1,7 @@
+- insert:
+    - id: ds-vision
+      name: ds-vision-plugin
+      config:
+        configFile: !!js process.env.DS_VISION_CONFIG ?? './vision.yml'
+        allowedRoots: !!js >-
+          (process.env.DS_VISION_ALLOWED_ROOTS ?? process.cwd()).split(process.platform === 'win32' ? ';' : ':').filter(Boolean)

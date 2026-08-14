@@ -1,0 +1,84 @@
+version: 1
+
+# The first successful member of `race` wins. `fallback` is attempted in order
+# only when every configured race channel fails or is unavailable.
+routing:
+  race: [agnes-2.5-flash, agnes-2.0-flash, glm, glm-thinking]
+  fallback: [custom-1, custom-2, custom-3, local]
+
+channels:
+  - id: agnes-2.5-flash
+    type: openai-compatible
+    baseUrl: https://api.agnes-ai.cn/v1/chat/completions
+    model: agnes-2.5-flash
+    apiKeyEnv: AGNES_API_KEY
+  - id: agnes-2.0-flash
+    type: openai-compatible
+    baseUrl: https://api.agnes-ai.cn/v1/chat/completions
+    model: agnes-2.0-flash
+    apiKeyEnv: AGNES_API_KEY
+  - id: glm
+    type: openai-compatible
+    baseUrl: https://open.bigmodel.cn/api/paas/v4/chat/completions
+    model: glm-4v-flash
+    apiKeyEnv: GLM_API_KEY
+  - id: glm-thinking
+    type: openai-compatible
+    baseUrl: https://open.bigmodel.cn/api/paas/v4/chat/completions
+    model: glm-4.1v-thinking-flash
+    apiKeyEnv: GLM_API_KEY
+
+  # Copy these entries and change their values for any OpenAI-compatible VLM.
+  - id: custom-1
+    type: openai-compatible
+    baseUrl: ${VISION_CUSTOM_1_BASE_URL}
+    model: ${VISION_CUSTOM_1_MODEL}
+    apiKeyEnv: VISION_CUSTOM_1_API_KEY
+    enabled: false
+  - id: custom-2
+    type: openai-compatible
+    baseUrl: ${VISION_CUSTOM_2_BASE_URL}
+    model: ${VISION_CUSTOM_2_MODEL}
+    apiKeyEnv: VISION_CUSTOM_2_API_KEY
+    enabled: false
+  - id: custom-3
+    type: openai-compatible
+    baseUrl: ${VISION_CUSTOM_3_BASE_URL}
+    model: ${VISION_CUSTOM_3_MODEL}
+    apiKeyEnv: VISION_CUSTOM_3_API_KEY
+    enabled: false
+
+  # From a container, host.docker.internal reaches Ollama/LM Studio on the host.
+  - id: local
+    type: openai-compatible
+    baseUrl: http://host.docker.internal:11434/v1/chat/completions
+    model: ${VISION_LOCAL_MODEL:-qwen2.5-vl:3b}
+    apiKeyEnv: VISION_LOCAL_API_KEY
+    apiKeyOptional: true
+    enabled: false
+
+ocr:
+  baidu:
+    enabled: false
+    apiKeyEnv: BAIDU_API_KEY
+    secretKeyEnv: BAIDU_SECRET_KEY
+  tesseract:
+    enabled: true
+    command: tesseract
+    languages: chi_sim+eng
+
+document:
+  mineru:
+    enabled: true
+    command: mineru-open-api
+    mode: flash
+
+limits:
+  maxFileBytes: 15728640
+  timeoutMs: 90000
+  maxTokens: 1024
+
+cache:
+  enabled: true
+  directory: /data/ds-vision-cache
+  ttlSeconds: 604800
